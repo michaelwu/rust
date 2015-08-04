@@ -158,7 +158,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
                 let def = cx.tcx.def_map.borrow().get(&self.pat.id).unwrap().full_def();
                 match def {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
-                        match lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
+                        match lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id), None) {
                             Some(const_expr) =>
                                 PatternKind::Constant { expr: const_expr.to_ref() },
                             None =>

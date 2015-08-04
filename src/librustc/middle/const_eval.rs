@@ -19,6 +19,7 @@ use front::map::blocks::FnLikeNode;
 use metadata::csearch;
 use metadata::inline::InlinedItem;
 use middle::{astencode, def, infer, subst, traits};
+use middle::subst::Subst;
 use middle::def_id::{DefId};
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
@@ -46,7 +47,7 @@ fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
     match opt_def {
         Some(def::DefConst(def_id)) |
         Some(def::DefAssociatedConst(def_id)) => {
-            lookup_const_by_id(tcx, def_id, Some(e.id))
+            lookup_const_by_id(tcx, def_id, Some(e.id), None)
         }
         Some(def::DefVariant(enum_def, variant_def, _)) => {
             lookup_variant_by_id(tcx, enum_def, variant_def)
@@ -88,7 +89,8 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
 
 pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                         def_id: DefId,
-                                        maybe_ref_id: Option<ast::NodeId>)
+                                        maybe_ref_id: Option<ast::NodeId>,
+                                        param_substs: Option<&'tcx subst::Substs<'tcx>>)
                                         -> Option<&'tcx Expr> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
@@ -109,8 +111,11 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                         Some(ref_id) => {
                             let trait_id = tcx.trait_of_item(def_id)
                                               .unwrap();
-                            let substs = tcx.node_id_item_substs(ref_id)
-                                            .substs;
+                            let mut substs = tcx.node_id_item_substs(ref_id)
+                                                .substs;
+                            if let Some(param_substs) = param_substs {
+                                substs = substs.subst(tcx, param_substs);
+                            }
                             resolve_trait_associated_const(tcx, ti, trait_id,
                                                            substs)
                         }
@@ -157,8 +162,11 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                         // a trait-associated const if the caller gives us
                         // the expression that refers to it.
                         Some(ref_id) => {
-                            let substs = tcx.node_id_item_substs(ref_id)
-                                            .substs;
+                            let mut substs = tcx.node_id_item_substs(ref_id)
+                                                .substs;
+                            if let Some(param_substs) = param_substs {
+                                substs = substs.subst(tcx, param_substs);
+                            }
                             resolve_trait_associated_const(tcx, ti, trait_id,
                                                            substs).map(|e| e.id)
                         }
@@ -909,7 +917,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                           _ => (None, None)
                       }
                   } else {
-                      (lookup_const_by_id(tcx, def_id, Some(e.id)), None)
+                      (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
                   }
               }
               Some(def::DefAssociatedConst(def_id)) => {
@@ -944,7 +952,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                           },
                       }
                   } else {
-                      (lookup_const_by_id(tcx, def_id, Some(e.id)), None)
+                      (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
                   }
               }
               Some(def::DefVariant(enum_def, variant_def, _)) => {
@@ -1076,12 +1084,8 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         Ok(None) => {
             return None
         }
-        Err(e) => {
-            tcx.sess.span_bug(ti.span,
-                              &format!("Encountered error `{:?}` when trying \
-                                        to select an implementation for \
-                                        constant trait item reference.",
-                                       e))
+        Err(_) => {
+            return None
         }
     };
 
@@ -1089,7 +1093,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         traits::VtableImpl(ref impl_data) => {
             match tcx.associated_consts(impl_data.impl_def_id)
                      .iter().find(|ic| ic.name == ti.name) {
-                Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
+                Some(ic) => lookup_const_by_id(tcx, ic.def_id, None, None),
                 None => match ti.node {
                     hir::ConstTraitItem(_, Some(ref expr)) => Some(&*expr),
                     _ => None,
