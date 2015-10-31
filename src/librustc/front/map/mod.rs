@@ -527,6 +527,7 @@ impl<'ast> Map<'ast> {
             NodeTraitItem(ti) => PathName(ti.name),
             NodeVariant(v) => PathName(v.node.name),
             NodeLifetime(lt) => PathName(lt.name),
+            NodeTyParam(tp) => PathName(tp.name),
             _ => panic!("no path elem for {:?}", node)
         }
     }

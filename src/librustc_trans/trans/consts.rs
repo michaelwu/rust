@@ -34,7 +34,7 @@ use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::subst::Substs;
+use middle::subst::{Subst, Substs};
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::AdjustUnsafeFnPointer;
 use middle::ty::{self, Ty};
@@ -223,8 +223,17 @@ fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            ref_expr: &hir::Expr,
                            param_substs: &'tcx Substs<'tcx>) -> ValueRef {
     let expr = get_const_expr(ccx, def_id, ref_expr, param_substs);
-    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-    get_const_expr_as_global(ccx, expr, check_const::ConstQualif::empty(), empty_substs)
+    let substs = ccx.tcx().node_id_item_substs(ref_expr.id).substs.subst(ccx.tcx(), param_substs);
+    let substs = if let Some(ref t) = substs.self_ty() {
+        if let Some(sub) = t.get_substs() {
+            sub
+        } else {
+            ccx.tcx().mk_substs(Substs::trans_empty())
+        }
+    } else {
+        ccx.tcx().mk_substs(Substs::trans_empty())
+    };
+    get_const_expr_as_global(ccx, expr, check_const::ConstQualif::empty(), substs)
 }
 
 pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

@@ -1847,6 +1847,15 @@ impl<'tcx> TyS<'tcx> {
             }
         }
     }
+
+    /// Get substs if they exist for this particular type variant.
+    pub fn get_substs(&'tcx self) -> Option<&'tcx Substs<'tcx>> {
+        match self.sty {
+            TyEnum(_, sub) |
+            TyStruct(_, sub) => Some(sub),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> ItemSubsts<'tcx> {

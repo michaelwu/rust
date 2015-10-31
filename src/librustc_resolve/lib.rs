@@ -2047,8 +2047,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         ConstantItemRibKind => {
                             // see #9186
+/*
                             resolve_error(self, span, ResolutionError::OuterTypeParameterContext);
                             return None;
+*/
                         }
                     }
                 }
