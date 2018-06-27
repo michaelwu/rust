@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "foo"]
+#![feature(non_exhaustive)]
 
 // @has foo/fn.f.html '//*[@class="docblock attributes"]' '#[no_mangle]'
 #[no_mangle]
@@ -20,8 +21,10 @@ pub extern "C" fn g() {}
 
 // @has foo/enum.Foo.html '//*[@class="docblock attributes"]' '#[repr(i64)]'
 // @has foo/enum.Foo.html '//*[@class="docblock attributes"]' '#[must_use]'
+// @has foo/enum.Foo.html '//*[@class="docblock attributes"]' '#[non_exhaustive]'
 #[repr(i64)]
 #[must_use]
+#[non_exhaustive]
 pub enum Foo {
     Bar,
 }

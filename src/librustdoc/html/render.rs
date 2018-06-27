@@ -3246,6 +3246,9 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             if e.variants_stripped {
                 write!(w, "    // some variants omitted\n")?;
             }
+            if it.attrs.other_attrs.iter().any(|a| a.check_name("non_exhaustive")) {
+                write!(w, "    // non-exhaustive. variants may be added later\n")?;
+            }
             write!(w, "}}")?;
         }
         write!(w, "</pre>")
@@ -3354,6 +3357,7 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "link_section",
     "must_use",
     "no_mangle",
+    "non_exhaustive",
     "repr",
     "unsafe_destructor_blind_to_params"
 ];
